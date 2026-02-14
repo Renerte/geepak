@@ -5,16 +5,8 @@ const geepak = @import("geepak");
 pub fn main() !void {
     var gpa: std.heap.DebugAllocator(.{}) = .init;
     const allocator = if (builtin.mode == std.builtin.OptimizeMode.Debug) gpa.allocator() else std.heap.smp_allocator;
-    // var args = try std.process.argsWithAllocator(allocator);
-    // defer args.deinit();
-    // while (args.next()) |arg| {
-    //     std.debug.print("Arg: {s}", arg);
-    // }
     const args = try std.process.argsAlloc(allocator);
-    for (args) |arg| {
-        std.debug.print("Arg: {s}\n", .{ arg });
-    }
-    if (args.len < 3) {
+    if (args.len != 3) {
         std.log.err("usage: geepak <archive> <directory>\n", .{});
         return;
     }
@@ -36,23 +28,5 @@ pub fn main() !void {
     if (builtin.mode == .Debug) {
         _ = gpa.detectLeaks();
     }
-}
-
-test "simple test" {
-    const gpa = std.testing.allocator;
-    var list: std.ArrayList(i32) = .empty;
-    defer list.deinit(gpa); // Try commenting this out and see if zig detects the memory leak!
-    try list.append(gpa, 42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
-}
-
-test "fuzz example" {
-    const Context = struct {
-        fn testOne(context: @This(), input: []const u8) anyerror!void {
-            _ = context;
-            // Try passing `--fuzz` to `zig build test` and see if it manages to fail this test case!
-            try std.testing.expect(!std.mem.eql(u8, "canyoufindme", input));
-        }
-    };
-    try std.testing.fuzz(Context{}, Context.testOne, .{});
+    std.log.info("Done!", .{});
 }
