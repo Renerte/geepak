@@ -1,10 +1,7 @@
 //! By convention, root.zig is the root source file when making a library.
 const std = @import("std");
 
-const FileEntry = struct {
-    name: []u8,
-    size: u32
-};
+const FileEntry = struct { name: []u8, size: u32 };
 
 pub fn unpackArchive(allocator: std.mem.Allocator, archive: std.fs.File, target: std.fs.Dir) !void {
     var buffer: [64]u8 = undefined;
@@ -24,12 +21,9 @@ pub fn unpackArchive(allocator: std.mem.Allocator, archive: std.fs.File, target:
         const fileSizeBuf = try reader.interface.readAlloc(allocator, 4);
         defer allocator.free(fileSizeBuf);
         const fileSize = std.mem.readPackedInt(u32, fileSizeBuf, 0, .little);
-        fileEntry.* = FileEntry {
-            .name = fileName,
-            .size = fileSize
-        };
+        fileEntry.* = FileEntry{ .name = fileName, .size = fileSize };
     }
-    std.log.info("Extracting {} files...", .{ fileEntries.len });
+    std.log.info("Extracting {} files...", .{fileEntries.len});
     for (fileEntries) |fileEntry| {
         const path, const fileName = splitFilePath(fileEntry.name);
         std.log.debug("Writing '{s}' in '{s}'", .{ fileName, path });
@@ -40,16 +34,12 @@ pub fn unpackArchive(allocator: std.mem.Allocator, archive: std.fs.File, target:
         defer allocator.free(contentsBuf);
         try file.writeAll(contentsBuf);
     }
-    _ = @TypeOf(target);
 }
 
-fn splitFilePath(path: []const u8) struct {[]const u8, [] const u8} {
+fn splitFilePath(path: []const u8) struct { []const u8, []const u8 } {
     std.debug.assert(path.len > 1);
     const idx = findLast(path, '/');
-    return .{
-        path[0..idx],
-        path[(idx + 1)..path.len]
-    };
+    return .{ path[0..idx], path[(idx + 1)..path.len] };
 }
 
 fn findLast(array: []const u8, element: u8) usize {
