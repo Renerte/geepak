@@ -30,9 +30,11 @@ pub fn unpackArchive(allocator: std.mem.Allocator, archive: std.fs.File, target:
         const dir = try target.makeOpenPath(path, .{});
         var file = try dir.createFile(fileName, .{});
         defer file.close();
+        var writeBuf: [64]u8 = undefined;
+        var writer = file.writer(&writeBuf);
         const contentsBuf = try reader.interface.readAlloc(allocator, fileEntry.size);
         defer allocator.free(contentsBuf);
-        try file.writeAll(contentsBuf);
+        try writer.interface.writeAll(contentsBuf);
     }
 }
 
