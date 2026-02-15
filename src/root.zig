@@ -4,8 +4,8 @@ const std = @import("std");
 const FileEntry = struct { name: []u8, size: u32 };
 
 pub fn unpackArchive(allocator: std.mem.Allocator, archive: std.fs.File, target: std.fs.Dir) !void {
-    var buffer: [64]u8 = undefined;
-    var reader = archive.reader(&buffer);
+    var readBuf: [64]u8 = undefined;
+    var reader = archive.reader(&readBuf);
     const fileCountBuf = try reader.interface.readAlloc(allocator, 4);
     defer allocator.free(fileCountBuf);
     const fileCount = std.mem.readPackedInt(u32, fileCountBuf, 0, .little);
@@ -30,11 +30,10 @@ pub fn unpackArchive(allocator: std.mem.Allocator, archive: std.fs.File, target:
         const dir = try target.makeOpenPath(path, .{});
         var file = try dir.createFile(fileName, .{});
         defer file.close();
-        var writeBuf: [64]u8 = undefined;
+        var writeBuf: [8192]u8 = undefined;
         var writer = file.writer(&writeBuf);
-        const contentsBuf = try reader.interface.readAlloc(allocator, fileEntry.size);
-        defer allocator.free(contentsBuf);
-        try writer.interface.writeAll(contentsBuf);
+        const n = try writer.interface.sendFileAll(&reader, .limited(fileEntry.size));
+        std.debug.assert(n == fileEntry.size);
     }
 }
 
