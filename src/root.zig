@@ -4,33 +4,27 @@ const std = @import("std");
 const FileEntry = struct { name: []u8, size: u32 };
 
 pub fn unpackArchive(allocator: std.mem.Allocator, archive: std.fs.File, target: std.fs.Dir) !void {
-    var readBuf: [64]u8 = undefined;
+    var readBuf: [8192]u8 = undefined;
     var reader = archive.reader(&readBuf);
-    const fileCountBuf = try reader.interface.readAlloc(allocator, 4);
-    defer allocator.free(fileCountBuf);
-    const fileCount = std.mem.readPackedInt(u32, fileCountBuf, 0, .little);
+    const fileCount = try reader.interface.takeInt(u32, .little);
     const fileEntries = try allocator.alloc(FileEntry, fileCount);
     defer allocator.free(fileEntries);
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
     for (fileEntries) |*fileEntry| {
-        const fileNameLenBuf = try reader.interface.readAlloc(allocator, 2);
-        defer allocator.free(fileNameLenBuf);
-        const fileNameLen = std.mem.readPackedInt(u16, fileNameLenBuf, 0, .little);
-        const fileName = try reader.interface.readAlloc(arena.allocator(), fileNameLen);
-        const fileSizeBuf = try reader.interface.readAlloc(allocator, 4);
-        defer allocator.free(fileSizeBuf);
-        const fileSize = std.mem.readPackedInt(u32, fileSizeBuf, 0, .little);
-        fileEntry.* = FileEntry{ .name = fileName, .size = fileSize };
+        const nameLen = try reader.interface.takeInt(u16, .little);
+        const name = try reader.interface.readAlloc(arena.allocator(), nameLen);
+        const size = try reader.interface.takeInt(u32, .little);
+        fileEntry.* = FileEntry{ .name = name, .size = size };
     }
     std.log.info("Extracting {} files...", .{fileEntries.len});
+    var writeBuf: [8192]u8 = undefined;
     for (fileEntries) |fileEntry| {
         const path, const fileName = splitFilePath(fileEntry.name);
         std.log.debug("Writing '{s}' in '{s}'", .{ fileName, path });
         const dir = try target.makeOpenPath(path, .{});
         var file = try dir.createFile(fileName, .{});
         defer file.close();
-        var writeBuf: [8192]u8 = undefined;
         var writer = file.writer(&writeBuf);
         const n = try writer.interface.sendFileAll(&reader, .limited(fileEntry.size));
         std.debug.assert(n == fileEntry.size);
