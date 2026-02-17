@@ -1,7 +1,7 @@
 //! By convention, root.zig is the root source file when making a library.
 const std = @import("std");
 
-const FileEntry = struct { name: []u8, size: u32 };
+const FileEntry = struct { name: []const u8, size: u32 };
 
 pub fn unpackArchive(allocator: std.mem.Allocator, archive: std.fs.File, target: std.fs.Dir) !void {
     var readBuf: [8192]u8 = undefined;
@@ -19,12 +19,14 @@ pub fn unpackArchive(allocator: std.mem.Allocator, archive: std.fs.File, target:
     }
     std.log.info("Extracting {} files...", .{fileEntries.len});
     errdefer bufferedPrint("\n", .{}) catch unreachable;
+    const progress = try Progress.init(allocator, fileCount);
+    defer progress.deinit();
     var writeBuf: [8192]u8 = undefined;
     for (fileEntries, 0..) |fileEntry, i| {
-        const path, const fileName = splitFilePath(fileEntry.name);
-        try bufferedPrint("\r\x1b[2K{d: >5}/{d} | {s}/{s}", .{i + 1, fileCount, path, fileName});
+        const path, const name = splitFilePath(fileEntry.name);
+        try progress.print(i, path, name);
         const dir = try target.makeOpenPath(path, .{});
-        var file = try dir.createFile(fileName, .{});
+        var file = try dir.createFile(name, .{});
         defer file.close();
         var writer = file.writerStreaming(&writeBuf);
         try reader.interface.streamExact(&writer.interface, fileEntry.size);
@@ -46,6 +48,30 @@ fn findLast(array: []const u8, element: u8) usize {
     }
     return idx;
 }
+
+const Progress = struct {
+    _allocator: std.mem.Allocator,
+    _targetStr: []const u8,
+    _padBuf: []const u8,
+
+    pub fn init(allocator: std.mem.Allocator, target: usize) !Progress {
+        const targetStr = try std.fmt.allocPrint(allocator, "{d}", .{target});
+        const padBuf = try allocator.alloc(u8, targetStr.len);
+        @memset(padBuf, ' ');
+        return Progress{ ._allocator = allocator, ._targetStr = targetStr, ._padBuf = padBuf };
+    }
+
+    pub fn print(self: Progress, count: usize, path: []const u8, name: []const u8) !void {
+        const countStr = try std.fmt.allocPrint(self._allocator, "{d}", .{count + 1});
+        defer self._allocator.free(countStr);
+        try bufferedPrint("\r\x1b[2K{s}{s}/{s} | {s}/{s}", .{ self._padBuf[0..(self._targetStr.len - countStr.len)], countStr, self._targetStr, path, name });
+    }
+
+    pub fn deinit(self: Progress) void {
+        self._allocator.free(self._targetStr);
+        self._allocator.free(self._padBuf);
+    }
+};
 
 fn bufferedPrint(comptime fmt: []const u8, args: anytype) !void {
     var stdoutBuf: [1024]u8 = undefined;
