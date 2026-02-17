@@ -10,7 +10,7 @@ pub fn main() !void {
     std.log.info("geepak v{s}", .{config.version});
     const args = try std.process.argsAlloc(allocator);
     if (args.len != 3) {
-        std.log.err("usage: geepak <archive> <directory>\n", .{});
+        std.log.err("Usage: geepak <archive> <directory>\n", .{});
         return;
     }
     const cwd = std.fs.cwd();
