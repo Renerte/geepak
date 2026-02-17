@@ -5,7 +5,7 @@ const FileEntry = struct { name: []u8, size: u32 };
 
 pub fn unpackArchive(allocator: std.mem.Allocator, archive: std.fs.File, target: std.fs.Dir) !void {
     var readBuf: [8192]u8 = undefined;
-    var reader = archive.reader(&readBuf);
+    var reader = archive.readerStreaming(&readBuf);
     const fileCount = try reader.interface.takeInt(u32, .little);
     const fileEntries = try allocator.alloc(FileEntry, fileCount);
     defer allocator.free(fileEntries);
@@ -25,9 +25,9 @@ pub fn unpackArchive(allocator: std.mem.Allocator, archive: std.fs.File, target:
         const dir = try target.makeOpenPath(path, .{});
         var file = try dir.createFile(fileName, .{});
         defer file.close();
-        var writer = file.writer(&writeBuf);
-        const n = try writer.interface.sendFileAll(&reader, .limited(fileEntry.size));
-        std.debug.assert(n == fileEntry.size);
+        var writer = file.writerStreaming(&writeBuf);
+        try reader.interface.streamExact(&writer.interface, fileEntry.size);
+        try writer.interface.flush();
     }
 }
 
