@@ -21,6 +21,19 @@ pub fn build(b: *std.Build) void {
     // target and optimize options) will be listed when running `zig build --help`
     // in this directory.
 
+    const app_version = std.SemanticVersion{ .major = 1, .minor = 0, .patch = 0 };
+    const version_str = b.fmt("{d}.{d}.{d}", .{ app_version.major, app_version.minor, app_version.patch });
+
+    const version_header = b.addWriteFile("version.h", b.fmt(
+        \\#define XSTR(s) STR(s)
+        \\#define STR(s) #s
+        \\#define VERSION_MAJOR {d}
+        \\#define VERSION_MINOR {d}
+        \\#define VERSION_PATCH {d}
+        \\#define VERSION_STR XSTR(VERSION_MAJOR) "." XSTR(VERSION_MINOR) "." XSTR(VERSION_PATCH)
+        \\#define PRODUCT_NAME "geepak"
+    , .{ app_version.major, app_version.minor, app_version.patch }));
+
     // This creates a module, which represents a collection of source files alongside
     // some compilation options, such as optimization mode and linked system libraries.
     // Zig modules are the preferred way of making Zig code available to consumers.
@@ -82,6 +95,15 @@ pub fn build(b: *std.Build) void {
             },
         }),
     });
+
+    const options = b.addOptions();
+    options.addOption([]const u8, "version", version_str);
+    exe.root_module.addOptions("config", options);
+
+    if (target.result.os.tag == .windows) {
+        const ver_dir = version_header.getDirectory();
+        exe.root_module.addWin32ResourceFile(.{ .file = b.path("src/resources.rc"), .include_paths = &[_]@TypeOf(ver_dir){ver_dir} });
+    }
 
     // This declares intent for the executable to be installed into the
     // install prefix when running `zig build` (i.e. when executing the default

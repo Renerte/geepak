@@ -2,9 +2,12 @@ const builtin = @import("builtin");
 const std = @import("std");
 const geepak = @import("geepak");
 
+const config = @import("config");
+
 pub fn main() !void {
     var gpa: std.heap.DebugAllocator(.{}) = .init;
     const allocator = if (builtin.mode == .Debug) gpa.allocator() else std.heap.smp_allocator;
+    std.log.info("geepak v{s}", .{config.version});
     const args = try std.process.argsAlloc(allocator);
     if (args.len != 3) {
         std.log.err("usage: geepak <archive> <directory>\n", .{});

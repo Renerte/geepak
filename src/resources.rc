@@ -1,0 +1,22 @@
+#include "version.h"
+
+1 VERSIONINFO
+FILEVERSION VERSION_MAJOR,VERSION_MINOR,VERSION_PATCH,0
+PRODUCTVERSION VERSION_MAJOR,VERSION_MINOR,VERSION_PATCH,0
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+        VALUE "CompanyName", "Renerte"
+        VALUE "ProductName", PRODUCT_NAME
+        VALUE "ProductVersion", VERSION_STR
+        VALUE "FileVersion", VERSION_STR
+        VALUE "FileDescription" "Unpacker for .gpak archives"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 65001
+    END
+END
