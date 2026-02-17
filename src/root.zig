@@ -41,7 +41,7 @@ fn splitFilePath(path: []const u8) struct { []const u8, []const u8 } {
     return .{ path[0..idx], path[(idx + 1)..path.len] };
 }
 
-fn findLast(array: []const u8, element: u8) usize {
+pub fn findLast(array: []const u8, element: u8) usize {
     var idx: usize = 0;
     for (array, 0..) |el, i| {
         if (el == element) idx = i;

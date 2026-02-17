@@ -9,8 +9,8 @@ pub fn main() !void {
     const allocator = if (builtin.mode == .Debug) gpa.allocator() else std.heap.smp_allocator;
     std.log.info("geepak v{s}", .{config.version});
     const args = try std.process.argsAlloc(allocator);
-    if (args.len != 3) {
-        std.log.err("Usage: geepak <archive> <directory>\n", .{});
+    if (args.len < 2) {
+        std.log.err("Usage: geepak <archive> [directory]", .{});
         return;
     }
     const cwd = std.fs.cwd();
@@ -19,7 +19,7 @@ pub fn main() !void {
         return;
     };
     defer archive.close();
-    var target = cwd.makeOpenPath(args[2], .{}) catch {
+    var target = cwd.makeOpenPath(if (args.len >= 3) args[2] else directoryFromFile(args[1]), .{}) catch {
         std.log.err("Failed to prepare target directory '{s}'", .{args[2]});
         return;
     };
@@ -27,9 +27,14 @@ pub fn main() !void {
     std.process.argsFree(allocator, args);
     geepak.unpackArchive(allocator, archive, target) catch |e| {
         std.log.err("Error unpacking the archive:\n\t{}", .{e});
+        return;
     };
     if (builtin.mode == .Debug) {
         _ = gpa.deinit();
     }
     std.log.info("Done!", .{});
+}
+
+fn directoryFromFile(filePath: []const u8) []const u8 {
+    return filePath[0..geepak.findLast(filePath, '.')];
 }
