@@ -18,10 +18,11 @@ pub fn unpackArchive(allocator: std.mem.Allocator, archive: std.fs.File, target:
         fileEntry.* = FileEntry{ .name = name, .size = size };
     }
     std.log.info("Extracting {} files...", .{fileEntries.len});
+    errdefer bufferedPrint("\n", .{}) catch unreachable;
     var writeBuf: [8192]u8 = undefined;
-    for (fileEntries) |fileEntry| {
+    for (fileEntries, 0..) |fileEntry, i| {
         const path, const fileName = splitFilePath(fileEntry.name);
-        std.log.debug("Writing '{s}' in '{s}'", .{ fileName, path });
+        try bufferedPrint("\r\x1b[2K{d: >5}/{d} | {s}/{s}", .{i + 1, fileCount, path, fileName});
         const dir = try target.makeOpenPath(path, .{});
         var file = try dir.createFile(fileName, .{});
         defer file.close();
@@ -29,6 +30,7 @@ pub fn unpackArchive(allocator: std.mem.Allocator, archive: std.fs.File, target:
         try reader.interface.streamExact(&writer.interface, fileEntry.size);
         try writer.interface.flush();
     }
+    try bufferedPrint("\r\x1b[2K", .{});
 }
 
 fn splitFilePath(path: []const u8) struct { []const u8, []const u8 } {
@@ -43,4 +45,11 @@ fn findLast(array: []const u8, element: u8) usize {
         if (el == element) idx = i;
     }
     return idx;
+}
+
+fn bufferedPrint(comptime fmt: []const u8, args: anytype) !void {
+    var stdoutBuf: [1024]u8 = undefined;
+    var stdout = std.fs.File.stdout().writerStreaming(&stdoutBuf);
+    try stdout.interface.print(fmt, args);
+    try stdout.interface.flush();
 }
