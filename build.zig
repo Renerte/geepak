@@ -1,12 +1,21 @@
 const std = @import("std");
 
+const targets: []const std.Target.Query = &.{
+    .{ .cpu_arch = .aarch64, .os_tag = .macos },
+    .{ .cpu_arch = .x86_64, .os_tag = .macos },
+    .{ .cpu_arch = .aarch64, .os_tag = .linux },
+    .{ .cpu_arch = .x86_64, .os_tag = .linux, .abi = .gnu },
+    .{ .cpu_arch = .x86_64, .os_tag = .linux, .abi = .musl },
+    .{ .cpu_arch = .x86_64, .os_tag = .windows },
+};
+
 // Although this function looks imperative, it does not perform the build
 // directly and instead it mutates the build graph (`b`) that will be then
 // executed by an external runner. The functions in `std.Build` implement a DSL
 // for defining build steps and express dependencies between them, allowing the
 // build runner to parallelize the build automatically (and the cache system to
 // know when a step doesn't need to be re-run).
-pub fn build(b: *std.Build) void {
+pub fn build(b: *std.Build) !void {
     // Standard target options allow the person running `zig build` to choose
     // what target to build for. Here we do not override the defaults, which
     // means any target is allowed, and the default is native. Other options
@@ -21,8 +30,9 @@ pub fn build(b: *std.Build) void {
     // target and optimize options) will be listed when running `zig build --help`
     // in this directory.
 
-    const app_version = std.SemanticVersion{ .major = 1, .minor = 0, .patch = 0 };
-    const version_str = b.fmt("{d}.{d}.{d}", .{ app_version.major, app_version.minor, app_version.patch });
+    const zon = @import("build.zig.zon");
+    const version_str = zon.version;
+    const app_version = try std.SemanticVersion.parse(version_str);
 
     const version_header = b.addWriteFile("version.h", b.fmt(
         \\#define XSTR(s) STR(s)
@@ -175,4 +185,27 @@ pub fn build(b: *std.Build) void {
     //
     // Lastly, the Zig build system is relatively simple and self-contained,
     // and reading its source code will allow you to master it.
+
+    const targets_step = b.step("targets", "Build all targets");
+
+    for (targets) |t| {
+        const target_exe = b.addExecutable(.{ .name = "geepak", .root_module = b.createModule(.{
+            .root_source_file = b.path("src/main.zig"),
+            .target = b.resolveTargetQuery(t),
+            .optimize = .ReleaseSafe,
+            .imports = &.{.{ .name = "geepak", .module = mod }},
+        }) });
+
+        target_exe.root_module.addOptions("config", options);
+
+        const target_output = b.addInstallArtifact(target_exe, .{
+            .dest_dir = .{
+                .override = .{
+                    .custom = try t.zigTriple(b.allocator),
+                },
+            },
+        });
+
+        targets_step.dependOn(&target_output.step);
+    }
 }
