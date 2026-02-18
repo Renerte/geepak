@@ -1,0 +1,57 @@
+name: Build
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+
+      - name: Build all targets
+        run: zig build targets
+
+      - uses: actions/upload-artifact@v6
+        name: Upload Windows artifact
+        with:
+          name: geepak-x86_64-windows
+          path: zig-out/x86_64-windows/geepak.exe
+
+      - uses: actions/upload-artifact@v6
+        name: Upload Linux (GNU) artifact
+        with:
+          name: geepak-x86_64-linux-gnu
+          path: zig-out/x86_64-linux-gnu/geepak
+
+      - uses: actions/upload-artifact@v6
+        name: Upload Linux (MUSL) artifact
+        with:
+          name: geepak-x86_64-linux-musl
+          path: zig-out/x86_64-linux-musl/geepak
+
+      - uses: actions/upload-artifact@v6
+        name: Upload Linux (ARM) artifact
+        with:
+          name: geepak-aarch64-linux
+          path: zig-out/aarch64-linux/geepak
+
+      - uses: actions/upload-artifact@v6
+        name: Upload MacOS (Intel) artifact
+        with:
+          name: geepak-x86_64-macos
+          path: zig-out/x86_64-macos/geepak
+
+      - uses: actions/upload-artifact@v6
+        name: Upload MacOS (Apple Silicon) artifact
+        with:
+          name: geepak-aarch64-macos
+          path: zig-out/aarch64-macos/geepak
