@@ -1,6 +1,8 @@
 //! By convention, root.zig is the root source file when making a library.
 const std = @import("std");
 
+const utils = @import("utils");
+
 const FileEntry = struct { name: []const u8, size: u32 };
 
 pub fn unpackArchive(allocator: std.mem.Allocator, archive: std.fs.File, target: std.fs.Dir) !void {
@@ -37,16 +39,8 @@ pub fn unpackArchive(allocator: std.mem.Allocator, archive: std.fs.File, target:
 
 fn splitFilePath(path: []const u8) struct { []const u8, []const u8 } {
     std.debug.assert(path.len > 1);
-    const idx = findLast(path, '/');
+    const idx = utils.findLast(path, '/');
     return .{ path[0..idx], path[(idx + 1)..path.len] };
-}
-
-pub fn findLast(array: []const u8, element: u8) usize {
-    var idx: usize = 0;
-    for (array, 0..) |el, i| {
-        if (el == element) idx = i;
-    }
-    return idx;
 }
 
 const Progress = struct {

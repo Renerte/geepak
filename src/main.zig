@@ -3,6 +3,7 @@ const std = @import("std");
 const geepak = @import("geepak");
 
 const config = @import("config");
+const utils = @import("utils");
 
 pub fn main() !void {
     var gpa: std.heap.DebugAllocator(.{}) = .init;
@@ -36,5 +37,5 @@ pub fn main() !void {
 }
 
 fn directoryFromFile(filePath: []const u8) []const u8 {
-    return filePath[0..geepak.findLast(filePath, '.')];
+    return filePath[0..utils.findLast(filePath, '.')];
 }
