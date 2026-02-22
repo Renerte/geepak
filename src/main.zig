@@ -5,28 +5,44 @@ const geepak = @import("geepak");
 const config = @import("config");
 const utils = @import("utils");
 
+const Mode = enum { none, unpack, pack };
+
 pub fn main() !void {
     var gpa: std.heap.DebugAllocator(.{}) = .init;
     const allocator = if (builtin.mode == .Debug) gpa.allocator() else std.heap.smp_allocator;
     std.log.info("geepak v{s}", .{config.version});
-    const args = try std.process.argsAlloc(allocator);
-    if (args.len < 2) {
-        std.log.err("Usage: geepak <archive> [directory]", .{});
-        return;
-    }
     const cwd = std.fs.cwd();
-    var archive = cwd.openFile(args[1], .{ .mode = .read_only }) catch {
-        std.log.err("Couldn't find the archive at '{s}'", .{args[1]});
-        return;
-    };
-    defer archive.close();
-    var target = cwd.makeOpenPath(if (args.len >= 3) args[2] else directoryFromFile(args[1]), .{}) catch {
-        std.log.err("Failed to prepare target directory '{s}'", .{args[2]});
-        return;
-    };
-    defer target.close();
-    std.process.argsFree(allocator, args);
-    geepak.unpackArchive(allocator, archive, target) catch |e| {
+    var archive: std.fs.File = undefined;
+    var directory: std.fs.Dir = undefined;
+    var mode = Mode.none;
+    var argsIter = try std.process.argsWithAllocator(allocator);
+    if (!argsIter.skip()) return;
+    while (argsIter.next()) |arg| {
+        std.log.debug("Got arg => {s}", .{arg});
+        switch (mode) {
+            .none => {
+                const stat = cwd.statFile(arg) catch |e| {
+                    std.log.err("Args error: {}", .{e});
+                    return;
+                };
+                switch (stat.kind) {
+                    .file => {
+                        archive = try cwd.openFile(arg, .{});
+                        mode = .unpack;
+                    },
+                    .directory => {
+                        directory = try cwd.openDir(arg, .{});
+                        mode = .pack;
+                    },
+                    else => {}
+                }
+            },
+            .pack => archive = try cwd.createFile(arg, .{}),
+            .unpack => directory = try cwd.makeOpenPath(arg, .{})
+        }
+    }
+    argsIter.deinit();
+    geepak.unpackArchive(allocator, archive, directory) catch |e| {
         std.log.err("Error unpacking the archive:\n\t{}", .{e});
         return;
     };
