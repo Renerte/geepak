@@ -18,12 +18,18 @@ pub fn main() !void {
     var argsIter = try std.process.argsWithAllocator(allocator);
     if (!argsIter.skip()) return;
     while (argsIter.next()) |arg| {
-        std.log.debug("Got arg => {s}", .{arg});
         switch (mode) {
             .none => {
-                const stat = cwd.statFile(arg) catch |e| {
-                    std.log.err("Args error: {}", .{e});
-                    return;
+                const stat = cwd.statFile(arg) catch |err| switch (err) {
+                    error.IsDir => {
+                        directory = try cwd.openDir(arg, .{ .iterate = true });
+                        mode = .pack;
+                        continue;
+                    },
+                    else => {
+                        std.log.err("Error parsing the arguments: {}", .{err});
+                        return;
+                    }
                 };
                 switch (stat.kind) {
                     .file => {
@@ -31,7 +37,7 @@ pub fn main() !void {
                         mode = .unpack;
                     },
                     .directory => {
-                        directory = try cwd.openDir(arg, .{});
+                        directory = try cwd.openDir(arg, .{ .iterate = true });
                         mode = .pack;
                     },
                     else => {}
