@@ -59,7 +59,7 @@ pub fn packArchive(allocator: std.mem.Allocator, source: std.fs.Dir, archive: st
             const file = try entry.dir.openFile(entry.basename, .{});
             defer file.close();
             const stat = try file.stat();
-            fileEntries[entryIndex] = FileEntry{.name = path, .size = @intCast(stat.size)};
+            fileEntries[entryIndex] = FileEntry{ .name = path, .size = @intCast(stat.size) };
             entryIndex += 1;
             try bufferedPrint("\r\x1b[2KCollected files: {d}", .{entryIndex});
         }

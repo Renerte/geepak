@@ -32,7 +32,7 @@ pub fn main() !void {
                     else => {
                         std.log.err("Error parsing the arguments: {}", .{err});
                         return;
-                    }
+                    },
                 };
                 switch (stat.kind) {
                     .file => {
@@ -43,11 +43,11 @@ pub fn main() !void {
                         directory = try cwd.openDir(arg, .{ .iterate = true });
                         mode = .pack;
                     },
-                    else => {}
+                    else => {},
                 }
             },
             .pack => archive = try cwd.createFile(arg, .{}),
-            .unpack => directory = try cwd.makeOpenPath(arg, .{})
+            .unpack => directory = try cwd.makeOpenPath(arg, .{}),
         }
     }
     argsIter.deinit();
@@ -65,7 +65,7 @@ pub fn main() !void {
         .unpack => geepak.unpackArchive(allocator, archive.?, directory.?) catch |e| {
             std.log.err("Error unpacking the archive:\n\t{}", .{e});
             return e;
-        }
+        },
     }
     if (builtin.mode == .Debug) {
         _ = gpa.deinit();
